@@ -7,7 +7,7 @@
     --accent-glow: rgba(255, 0, 85, 0.8);
     --danger: #ff7675;
     --text: #2d3436;
-    --glass-bg: rgba(255, 255, 255, 0.85); /* 視認性向上のため少し不透明度UP */
+    --glass-bg: rgba(255, 255, 255, 0.85);
     --glass-border: rgba(255, 255, 255, 0.6);
     --shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.15);
     --scope-bg: #222f3e;
@@ -17,7 +17,6 @@
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
-
 body { font-family: var(--font-ui); color: var(--text); background: #dfe6e9; min-height: 100vh; overflow-x: hidden; }
 
 /* Orbs */
@@ -26,22 +25,20 @@ body { font-family: var(--font-ui); color: var(--text); background: #dfe6e9; min
 .orb-2 { width: 300px; height: 300px; background: #81ecec; bottom: -50px; right: -50px; animation-delay: -10s; }
 @keyframes orbFloat { 0% { transform: translate(0, 0); } 100% { transform: translate(30px, 50px); } }
 
-/* === Layout Maximization === */
 .app-container { max-width: 1280px; margin: 0 auto; padding-bottom: 40px; }
 .glass-panel { background: var(--glass-bg); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border: 1px solid var(--glass-border); border-radius: 20px; box-shadow: var(--shadow); }
 
-/* Header */
+/* Header & Nav */
 .header { margin: 15px; padding: 12px 32px; display: flex; justify-content: space-between; align-items: center; position: sticky; top: 15px; z-index: 100; }
 .logo { display: flex; align-items: center; gap: 10px; font-weight: 700; color: var(--primary); font-size: 1.2rem; }
 .status-pill { background: rgba(255,255,255,0.9); padding: 6px 16px; border-radius: 20px; font-family: var(--font-mono); font-size: 0.9rem; color: #636e72; }
 .nav-links .nav-item { text-decoration: none; color: var(--text); font-weight: 600; padding: 8px 16px; border-radius: 12px; transition: 0.2s; }
 .nav-links .nav-item:hover { background: rgba(0,0,0,0.05); }
 
-/* Screens */
+/* Screen & Card */
 .screen { display: none; padding: 0 15px; animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1); }
 .screen.active { display: block; }
 @keyframes slideUp { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
-
 .hero-text { text-align: center; margin: 30px 0; }
 .hero-text h2 { font-size: 2.5rem; margin-bottom: 10px; background: linear-gradient(45deg, var(--primary), var(--secondary)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
 .card-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; padding-bottom: 40px; }
@@ -50,10 +47,15 @@ body { font-family: var(--font-ui); color: var(--text); background: #dfe6e9; min
 .card-icon { font-size: 3rem; margin-bottom: 16px; }
 .tag { position: absolute; top: 12px; right: 12px; font-size: 0.7rem; padding: 4px 10px; background: rgba(108, 92, 231, 0.1); color: var(--primary); border-radius: 20px; font-weight: bold; }
 
-/* Viz Area (Maximized) */
+/* Viz Layout */
 .viz-area { min-height: 380px; margin-bottom: 15px; position: relative; overflow: hidden; padding: 15px; display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 10px; }
 .no-pad { padding: 0; }
 .flex-col { flex-direction: column; }
+.reference-panel { padding: 20px; margin-bottom: 20px; }
+.panel-header-small { font-weight: bold; font-size: 0.9rem; color: #636e72; margin-bottom: 10px; border-bottom: 1px solid #ccc; padding-bottom: 5px; }
+.datasheet-row { display: flex; gap: 20px; align-items: center; }
+.datasheet-desc { font-size: 0.9rem; color: #2d3436; }
+.datasheet-desc code { background: #eee; padding: 4px 8px; border-radius: 4px; font-family: var(--font-mono); display: inline-block; margin-top: 8px; }
 
 .control-area { padding: 20px; display: flex; gap: 20px; align-items: center; flex-wrap: wrap; margin-bottom: 20px; }
 .slider-group { flex: 1; min-width: 250px; }
@@ -75,53 +77,77 @@ input:checked + .slider:before { transform: translateX(24px); }
 .flow-step { position: relative; z-index: 2; text-align: center; background: rgba(255,255,255,0.4); padding: 10px; border-radius: 12px; backdrop-filter: blur(4px); display: flex; flex-direction: column; align-items: center; gap: 4px; min-width: 130px; border: 1px solid rgba(255,255,255,0.4); }
 .label { font-size: 0.8rem; color: #636e72; font-weight: bold; letter-spacing: 0.5px; margin-top: 5px; text-transform: uppercase;}
 
-/* Temp Items (HUGE) */
-.datasheet-graph-wrapper { width: 340px; height: 200px; background: #fff; border-radius: 8px; border: 1px solid #ccc; position: relative; }
-.datasheet-canvas { width: 100%; height: 100%; display: block; border-radius: 8px; }
-.graph-box { width: 180px; height: 80px; background: #eee; border-radius: 4px; }
-.mini-graph { width: 100%; height: 100%; display: block; border-radius: 4px; }
+/* --- 1. Temperature Items --- */
+/* Human Character */
+.human-wrapper { width: 100px; height: 100px; position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; transition: 0.3s; }
+.human-face { width: 70px; height: 70px; background: #ffeaa7; border-radius: 50%; border: 3px solid #b2bec3; position: relative; transition: background 0.3s, border-color 0.3s; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+.eyes { display: flex; justify-content: space-between; position: absolute; top: 25px; left: 18px; width: 34px; }
+.eye { width: 8px; height: 8px; background: #2d3436; border-radius: 50%; }
+.mouth { width: 20px; height: 4px; background: #2d3436; border-radius: 2px; position: absolute; bottom: 18px; left: 25px; transition: 0.3s; }
+.sweat { position: absolute; top: 5px; right: 5px; font-size: 1.2rem; opacity: 0; transition: 0.3s; animation: drip 1s infinite alternate; }
+.human-temp-badge { position: absolute; bottom: -10px; background: #fff; padding: 2px 8px; border-radius: 10px; font-size: 0.8rem; font-weight: bold; border: 1px solid #ccc; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
 
-.icon-circle { width: 60px; height: 60px; background: #fff; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 2rem; margin-bottom: 4px; }
+/* Human States */
+.human-cold .human-face { background: #74b9ff; border-color: #0984e3; animation: shiver 0.2s infinite; }
+.human-cold .mouth { width: 14px; height: 6px; border-radius: 50%; bottom: 16px; border: 2px solid #2d3436; background: transparent; border-top: none; }
+.human-hot .human-face { background: #ff7675; border-color: #d63031; }
+.human-hot .mouth { height: 10px; border-radius: 50%; background: #d63031; }
+.human-hot .sweat { opacity: 1; }
+@keyframes shiver { 0% { transform: translate(0, 0); } 25% { transform: translate(-2px, 1px); } 50% { transform: translate(0, 0); } 75% { transform: translate(2px, -1px); } }
+@keyframes drip { 0% { transform: translateY(0); } 100% { transform: translateY(5px); } }
+
+/* Real Sensor Icon */
+.sensor-chip { width: 60px; height: 80px; position: relative; display: flex; flex-direction: column; align-items: center; }
+.chip-body { width: 50px; height: 50px; background: #2d3436; border-radius: 4px 4px 0 0; color: #fff; font-family: monospace; font-size: 0.7rem; display: flex; align-items: center; justify-content: center; text-align: center; line-height: 1.1; z-index: 2; border: 1px solid #555; }
+.chip-legs { display: flex; gap: 8px; }
+.chip-legs div { width: 6px; height: 20px; background: #b2bec3; border-radius: 0 0 4px 4px; }
+
+/* Existing Viz Items */
 .meter-display { font-family: var(--font-mono); font-size: 1.6rem; font-weight: 700; color: var(--primary); }
 .adc-box { font-family: var(--font-mono); background: #2d3436; color: #00cec9; padding: 15px; border-radius: 8px; min-width: 120px; }
 .binary-matrix { font-size: 0.9rem; color: #636e72; margin-bottom: 4px; }
 .adc-int { font-size: 1.4rem; }
 .cpu-card { border: 2px solid var(--primary); padding: 15px; border-radius: 8px; background: #fff; font-weight: bold; font-size: 1.6rem; min-width: 120px; }
+.graph-box { width: 160px; height: 70px; background: #eee; border-radius: 4px; }
+.mini-graph { width: 100%; height: 100%; display: block; border-radius: 4px; }
+.datasheet-graph-wrapper { width: 200px; height: 140px; background: #fff; border-radius: 8px; border: 1px solid #ccc; position: relative; }
+.datasheet-canvas { width: 100%; height: 100%; display: block; border-radius: 8px; }
 
-/* Control Flow Items (HUGE) */
-.mcu-box { width: 200px; background: #2d3436; border-radius: 12px; padding: 15px; color: #fff; box-shadow: 0 4px 12px rgba(0,0,0,0.2); }
-.mcu-chip { width: 70px; height: 70px; background: #555; border: 2px solid #999; margin: 0 auto 10px; display: flex; align-items: center; justify-content: center; position: relative; }
-.mcu-chip::before { width: 80px; height: 4px; top: 31px; left: -5px; box-shadow: 0 15px 0 #999, 0 -15px 0 #999; content:''; position: absolute; background: #999; } 
-.mcu-chip::after { width: 4px; height: 80px; left: 31px; top: -5px; box-shadow: 15px 0 0 #999, -15px 0 0 #999; content:''; position: absolute; background: #999; }
-.chip-text { z-index: 2; font-family: var(--font-mono); font-size: 1.2rem; background: #555; padding: 2px; }
-.mcu-logic { font-family: var(--font-mono); font-size: 0.9rem; text-align: left; color: #a29bfe; line-height: 1.5; }
+/* --- 2. Control Items (FAN) --- */
+.fan-step { min-width: 160px; }
+.fan-container { position: relative; width: 140px; height: 140px; display: flex; align-items: center; justify-content: center; }
+.fan-housing { width: 120px; height: 120px; border: 4px solid #b2bec3; border-radius: 50%; position: relative; display: flex; align-items: center; justify-content: center; background: rgba(255,255,255,0.2); z-index: 5; }
+.fan-hub { width: 30px; height: 30px; background: #2d3436; border-radius: 50%; position: absolute; z-index: 10; }
+.fan-blades { width: 100%; height: 100%; position: absolute; top: 0; left: 0; }
+.blade { position: absolute; top: 50%; left: 50%; width: 50px; height: 14px; background: #0984e3; border-radius: 8px; transform-origin: 0% 50%; opacity: 0.8; }
+.b1 { transform: rotate(0deg) translateX(10px); }
+.b2 { transform: rotate(120deg) translateX(10px); }
+.b3 { transform: rotate(240deg) translateX(10px); }
 
-.scope-container { width: 340px; background: #f1f2f6; padding: 12px; border-radius: 12px; border: 1px solid #ccc; }
+/* Wind Effect */
+.wind-effect-container { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 200px; height: 200px; pointer-events: none; z-index: 1; }
+.wind-line { position: absolute; background: rgba(0, 206, 201, 0.6); height: 2px; border-radius: 2px; opacity: 0; }
+
+.mcu-box { width: 180px; background: #2d3436; border-radius: 12px; padding: 15px; color: #fff; box-shadow: 0 4px 12px rgba(0,0,0,0.2); }
+.mcu-chip { width: 60px; height: 60px; background: #555; border: 2px solid #999; margin: 0 auto 10px; display: flex; align-items: center; justify-content: center; position: relative; }
+.mcu-chip::before { width: 70px; height: 4px; top: 26px; left: -5px; box-shadow: 0 12px 0 #999, 0 -12px 0 #999; content:''; position: absolute; background: #999; } 
+.mcu-chip::after { width: 4px; height: 70px; left: 26px; top: -5px; box-shadow: 12px 0 0 #999, -12px 0 0 #999; content:''; position: absolute; background: #999; }
+.chip-text { z-index: 2; font-family: var(--font-mono); font-size: 1rem; background: #555; padding: 2px; }
+.mcu-logic { font-family: var(--font-mono); font-size: 0.85rem; text-align: left; color: #a29bfe; line-height: 1.5; }
+
+.scope-container { width: 260px; background: #f1f2f6; padding: 12px; border-radius: 12px; border: 1px solid #ccc; }
 .scope-label { font-size: 0.75rem; color: #636e72; text-align: left; font-weight: bold; margin-bottom: 4px; }
-.signal-canvas.small-scope { width: 100%; height: 100px; background: var(--scope-bg); border-radius: 4px; display: block; border: 1px solid rgba(255,255,255,0.1); }
+.signal-canvas.small-scope { width: 100%; height: 90px; background: var(--scope-bg); border-radius: 4px; display: block; border: 1px solid rgba(255,255,255,0.1); }
 .signal-canvas.dir-h { height: 40px; }
+.icon-circle { width: 60px; height: 60px; background: #fff; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 2rem; margin-bottom: 4px; }
+.rpm-display { font-family: var(--font-mono); font-size: 1.3rem; font-weight: 700; color: var(--text); margin-top: 8px; }
 
-.motor-wrapper-small { position: relative; width: 120px; height: 120px; display: flex; align-items: center; justify-content: center; margin: 0 auto; }
-.motor-body { width: 90px; height: 90px; background: #dfe6e9; border-radius: 50%; border: 6px solid #b2bec3; position: relative; z-index: 2; display: flex; align-items: center; justify-content: center; transition: border-color 0.3s; }
-.motor-shaft { position: absolute; width: 80%; height: 10px; background: var(--text); border-radius: 4px; }
-.motor-arrow { position: absolute; width: 100%; height: 100%; border-radius: 50%; border: 2px dashed rgba(0,0,0,0.2); }
-.motor-glow { position: absolute; width: 120px; height: 120px; border-radius: 50%; z-index: 1; opacity: 0; transition: opacity 0.3s; filter: blur(15px); }
-.rpm-display { font-family: var(--font-mono); font-size: 1.4rem; font-weight: 700; color: var(--text); margin-top: 4px; }
-
-.motor-state-fwd .motor-body { border-color: var(--secondary); }
-.motor-state-fwd .motor-arrow { border-color: var(--secondary); }
-.motor-state-fwd .motor-glow { background: var(--secondary); opacity: 0.4; }
-.motor-state-rev .motor-body { border-color: var(--accent); }
-.motor-state-rev .motor-arrow { border-color: var(--accent); }
-.motor-state-rev .motor-glow { background: var(--accent); opacity: 0.4; }
-
-/* Common Canvas */
+/* 3,4,5 Other Sections */
 .full-canvas { width: 100%; height: 100%; display: block; }
 .overlay-ui { position: absolute; top: 20px; right: 20px; }
 .mode-badge { background: var(--text); color: white; padding: 6px 12px; border-radius: 6px; font-weight: 700; font-size: 0.8rem; }
 .trigger-wrapper { display: flex; align-items: center; gap: 16px; width: 100%; margin-left: 20px; }
 .big-trigger-btn { background: var(--accent); color: white; border: none; padding: 16px 32px; border-radius: 50px; font-size: 1.1rem; font-weight: 700; cursor: pointer; box-shadow: 0 8px 20px rgba(253, 121, 168, 0.4); }
-
 .deadline-visualizer { width: 100%; max-width: 800px; height: 80px; position: relative; margin-bottom: 20px; }
 .timeline-track { width: 100%; height: 100%; background: #f1f2f6; border-radius: 30px; position: relative; overflow: hidden; box-shadow: inset 0 2px 6px rgba(0,0,0,0.1); }
 .deadline-line { position: absolute; right: 0; top: 0; height: 100%; width: 3px; background: var(--danger); z-index: 5; display: flex; align-items: flex-start; justify-content: flex-end; }
@@ -129,7 +155,6 @@ input:checked + .slider:before { transform: translateX(24px); }
 .task-bar { height: 100%; background: var(--primary); width: 0%; border-radius: 30px 0 0 30px; display: flex; align-items: center; padding-left: 20px; color: white; font-weight: 600; font-size: 1rem; white-space: nowrap; overflow: visible; transition: width 0.1s linear, background 0.3s; }
 .preset-buttons { display: flex; gap: 10px; width: 100%; margin-top: 10px; }
 .preset { flex: 1; border: none; padding: 15px; border-radius: 8px; font-weight: bold; cursor: pointer; background: white; border: 2px solid transparent; font-size: 1rem; }
-
 .memory-tower { width: 240px; height: 340px; border: 4px solid #b2bec3; border-radius: 12px; display: flex; flex-direction: column; overflow: hidden; background: #fff; position: relative; }
 .mem-header { padding: 8px; text-align: center; color: white; font-size: 0.9rem; font-weight: bold; z-index: 2; }
 .mem-header.stack { background: var(--secondary); }
@@ -145,8 +170,6 @@ input:checked + .slider:before { transform: translateX(24px); }
 @media (max-width: 900px) {
     .viz-area { flex-direction: column; height: auto; align-items: stretch; }
     .flow-step { width: 100%; margin-bottom: 10px; flex-direction: row; justify-content: space-between; padding: 10px 20px;}
-    .flow-step > * { margin: 0 !important; }
-    .label { margin: 0; font-size: 0.9rem; order: -1; }
-    .datasheet-graph-wrapper, .scope-container { width: 60%; }
-    .mcu-box { width: 40%; }
+    .datasheet-row { flex-direction: column; align-items: flex-start; }
+    .datasheet-graph-wrapper { width: 100%; }
 }

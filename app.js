@@ -5,7 +5,7 @@ document.addEventListener('DOMContentLoaded', () => {
         running: false,
         t: 0,
         temp: { val: 25, noise: false, history: new Array(50).fill(0), particles: [] },
-        ctrl: { input: 0, output: 0, rpm: 0, angle: 0, historyIn: new Array(100).fill(0), particles: [] },
+        ctrl: { input: 0, output: 0, rpm: 0, angle: 0, historyIn: new Array(100).fill(0), particles: [], windParticles: [] },
         int:  { mode: 'polling', isrLen: 10, events: [], cursor: 0, isrActive: false },
         dl:   { max: 100, current: 0, load: 30, status: 'idle' },
         mem:  { stack: 1, heap: 0, crashed: false }
@@ -28,8 +28,12 @@ document.addEventListener('DOMContentLoaded', () => {
     
     function updateLogic() {
         // Temp
-        let rawV = 0.5 + (state.temp.val / 100.0);
+        // TMP36-like characteristic: 0.5V at 0C, 10mV/C.
+        // V = 0.5 + T * 0.01
+        let rawV = 0.5 + (state.temp.val * 0.01);
+        
         if (state.temp.noise) rawV += (Math.random() - 0.5) * 0.1;
+        // Clamp to 0-3.3V (ADC range)
         rawV = Math.max(0, Math.min(3.3, rawV));
         state.temp.history.push(rawV); state.temp.history.shift();
 
@@ -38,7 +42,6 @@ document.addEventListener('DOMContentLoaded', () => {
         state.ctrl.rpm += (targetRpm - state.ctrl.rpm) * 0.05;
         state.ctrl.angle += state.ctrl.rpm;
         state.ctrl.output = Math.abs(state.ctrl.input);
-        state.ctrl.historyIn.push(state.ctrl.input); state.ctrl.historyIn.shift();
         
         // Interrupt
         state.int.cursor = (state.int.cursor + 2) % 800;
@@ -85,12 +88,61 @@ document.addEventListener('DOMContentLoaded', () => {
         if (state.screen === 'memory') drawMemory();
     }
 
+    // === 1. Temperature ===
     function drawTemp() {
         const v = state.temp.history[state.temp.history.length-1];
         document.getElementById('disp-volt').textContent = v.toFixed(2);
         document.getElementById('disp-adc').textContent = Math.floor((v/3.3)*4095);
+        // Reverse calc for display (Sensor spec: T = (V - 0.5) * 100)
         document.getElementById('disp-temp').textContent = ((v - 0.5) * 100).toFixed(1);
         
+        // Update Human Face
+        updateHumanFace(state.temp.val);
+
+        // Update Reference Graph
+        drawTempGraph();
+
+        // Particles
+        const tRatio = (state.temp.val + 20) / 120; // range -20 to 100 normalized
+        const color = `rgb(${tRatio*255}, ${50}, ${(1-tRatio)*255})`;
+        const cvs = document.getElementById('temp-flow-canvas');
+        const ctx = cvs.getContext('2d');
+        resize(cvs); ctx.clearRect(0,0,cvs.width, cvs.height);
+        
+        if (state.t % 5 === 0) state.temp.particles.push({x: 100, y: cvs.height/2, life: 1.0});
+        ctx.fillStyle = color;
+        state.temp.particles.forEach((p, i) => {
+            p.x += 5; p.life -= 0.005; ctx.globalAlpha = p.life;
+            ctx.beginPath(); ctx.arc(p.x, p.y + Math.sin(p.x*0.05)*10, 4, 0, Math.PI*2); ctx.fill();
+            if (p.x > cvs.width) state.temp.particles.splice(i, 1);
+        });
+
+        // Mini Graph
+        const gCvs = document.getElementById('canvas-volt');
+        const gCtx = gCvs.getContext('2d');
+        resize(gCvs); gCtx.clearRect(0,0,gCvs.width, gCvs.height);
+        gCtx.beginPath(); gCtx.strokeStyle = C.secondary; gCtx.lineWidth=2;
+        state.temp.history.forEach((h, i) => {
+            const x = (i/50)*gCvs.width; const y = gCvs.height - (h/3.3)*gCvs.height;
+            i==0 ? gCtx.moveTo(x,y) : gCtx.lineTo(x,y);
+        });
+        gCtx.stroke();
+    }
+
+    function updateHumanFace(temp) {
+        const wrapper = document.getElementById('human-wrapper');
+        const valText = document.getElementById('human-temp-val');
+        valText.textContent = temp;
+        
+        wrapper.classList.remove('human-cold', 'human-hot');
+        if (temp < 10) {
+            wrapper.classList.add('human-cold');
+        } else if (temp > 35) {
+            wrapper.classList.add('human-hot');
+        }
+    }
+
+    function drawTempGraph() {
         const charCvs = document.getElementById('canvas-temp-char');
         const charCtx = charCvs.getContext('2d');
         resize(charCvs); const w = charCvs.width; const h = charCvs.height;
@@ -106,35 +158,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const mapX = (t) => mL + ((t + 20) / 120) * gW; const mapY = (val) => (h - mB) - (val / 2.0) * gH;
         charCtx.strokeStyle = '#2ecc71'; charCtx.lineWidth = 3; charCtx.beginPath();
-        charCtx.moveTo(mapX(-20), mapY(0.5 + -20/100)); charCtx.lineTo(mapX(100), mapY(0.5 + 100/100)); charCtx.stroke();
+        charCtx.moveTo(mapX(-20), mapY(0.5 + -20*0.01)); charCtx.lineTo(mapX(100), mapY(0.5 + 100*0.01)); charCtx.stroke();
         
-        const curT = state.temp.val; const curV = 0.5 + curT/100; const pX = mapX(curT); const pY = mapY(curV);
+        const curT = state.temp.val; const curV = 0.5 + curT*0.01; const pX = mapX(curT); const pY = mapY(curV);
         charCtx.fillStyle = '#e74c3c'; charCtx.beginPath(); charCtx.arc(pX, pY, 5, 0, Math.PI*2); charCtx.fill();
-
-        const tRatio = state.temp.val / 100;
-        const color = `rgb(${tRatio*255}, ${100}, ${(1-tRatio)*255})`;
-        const cvs = document.getElementById('temp-flow-canvas');
-        const ctx = cvs.getContext('2d');
-        resize(cvs); ctx.clearRect(0,0,cvs.width, cvs.height);
-        if (state.t % 5 === 0) state.temp.particles.push({x: 50, y: cvs.height/2, life: 1.0});
-        ctx.fillStyle = color;
-        state.temp.particles.forEach((p, i) => {
-            p.x += 5; p.life -= 0.005; ctx.globalAlpha = p.life;
-            ctx.beginPath(); ctx.arc(p.x, p.y + Math.sin(p.x*0.05)*10, 4, 0, Math.PI*2); ctx.fill();
-            if (p.x > cvs.width) state.temp.particles.splice(i, 1);
-        });
-
-        const gCvs = document.getElementById('canvas-volt');
-        const gCtx = gCvs.getContext('2d');
-        resize(gCvs); gCtx.clearRect(0,0,gCvs.width, gCvs.height);
-        gCtx.beginPath(); gCtx.strokeStyle = C.secondary; gCtx.lineWidth=2;
-        state.temp.history.forEach((h, i) => {
-            const x = (i/50)*gCvs.width; const y = gCvs.height - (h/3.3)*gCvs.height;
-            i==0 ? gCtx.moveTo(x,y) : gCtx.lineTo(x,y);
-        });
-        gCtx.stroke();
     }
 
+    // === 2. Control (Fan) ===
     function drawControl() {
         const input = state.ctrl.input;
         const isRev = input < 0;
@@ -142,6 +172,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const lineColor = isRev ? C.accent : C.secondary;
         const glowColor = isRev ? C.accentGlow : C.secondaryGlow;
 
+        // Particles Flow
         const cvs = document.getElementById('ctrl-flow-canvas');
         const ctx = cvs.getContext('2d');
         resize(cvs); ctx.clearRect(0,0,cvs.width, cvs.height);
@@ -155,24 +186,28 @@ document.addEventListener('DOMContentLoaded', () => {
             if (p.x > cvs.width) state.ctrl.particles.splice(i, 1);
         });
 
-        const wrapper = document.getElementById('motor-wrapper');
-        document.getElementById('motor-body').style.transform = `rotate(${state.ctrl.angle}deg)`;
+        // FAN Rotation & Wind
+        const blades = document.getElementById('fan-blades');
+        blades.style.transform = `rotate(${state.ctrl.angle}deg)`;
+        
         document.getElementById('disp-rpm').textContent = Math.round(Math.abs(state.ctrl.rpm) * 10);
         document.getElementById('disp-stick').textContent = input;
         
-        wrapper.classList.remove('motor-state-fwd', 'motor-state-rev');
         const dirText = document.getElementById('disp-dir-text');
         if (Math.abs(input) > 5) {
-            wrapper.classList.add(isRev ? 'motor-state-rev' : 'motor-state-fwd');
-            dirText.textContent = isRev ? "⏪ REV" : "FWD ⏩";
+            dirText.textContent = isRev ? "⏪ 吸気 (REV)" : "送風 (FWD) ⏩";
             dirText.style.color = lineColor;
+            // Generate Wind Particles
+            createWind(isRev, duty, lineColor);
         } else { dirText.textContent = "STOP"; dirText.style.color = '#aaa'; }
 
+        // Scope Config
         const setupScopeCtx = (ctx) => {
             ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.shadowBlur = 8;
             ctx.shadowColor = glowColor; ctx.strokeStyle = lineColor; ctx.lineWidth = 2;
         };
 
+        // PWM Scope
         const cvsPwm = document.getElementById('canvas-ctrl-pwm');
         const ctxPwm = cvsPwm.getContext('2d');
         resize(cvsPwm); ctxPwm.clearRect(0,0,cvsPwm.width, cvsPwm.height);
@@ -194,6 +229,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         ctxPwm.stroke();
 
+        // DIR Scope
         const cvsDir = document.getElementById('canvas-ctrl-dir');
         const ctxDir = cvsDir.getContext('2d');
         resize(cvsDir); ctxDir.clearRect(0,0,cvsDir.width, cvsDir.height);
@@ -202,6 +238,29 @@ document.addEventListener('DOMContentLoaded', () => {
         ctxDir.beginPath(); setupScopeCtx(ctxDir); ctxDir.moveTo(0, dY); ctxDir.lineTo(cvsDir.width, dY); ctxDir.stroke();
     }
 
+    function createWind(isRev, intensity, color) {
+        const container = document.getElementById('wind-effect');
+        // Limit creation rate
+        if (Math.random() > intensity) return;
+
+        const el = document.createElement('div');
+        el.className = 'wind-line';
+        el.style.background = color;
+        el.style.width = (10 + Math.random() * 20) + 'px';
+        el.style.top = (Math.random() * 100) + '%';
+        el.style.left = isRev ? '100%' : '0%';
+        container.appendChild(el);
+
+        // Animate via WAAPI
+        const keyframes = isRev 
+            ? [{ transform: 'translateX(0) scaleX(1)', opacity: 0.8 }, { transform: 'translateX(-150px) scaleX(1.5)', opacity: 0 }]
+            : [{ transform: 'translateX(0) scaleX(1)', opacity: 0.8 }, { transform: 'translateX(150px) scaleX(1.5)', opacity: 0 }];
+        
+        const anim = el.animate(keyframes, { duration: 500 - (intensity*300), easing: 'ease-out' });
+        anim.onfinish = () => el.remove();
+    }
+
+    // === Other Sections (Unchanged Logic) ===
     function drawInterrupt() {
         const cvs = document.getElementById('canvas-int');
         const ctx = cvs.getContext('2d');
