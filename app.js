@@ -5,7 +5,7 @@ document.addEventListener('DOMContentLoaded', () => {
         running: false,
         t: 0,
         temp: { val: 25, noise: false, history: new Array(50).fill(0), particles: [] },
-        ctrl: { input: 0, output: 0, rpm: 0, angle: 0, historyIn: new Array(100).fill(0), historyOut: new Array(100).fill(0) },
+        ctrl: { input: 0, output: 0, rpm: 0, angle: 0, historyIn: new Array(100).fill(0), particles: [] },
         int:  { mode: 'polling', isrLen: 10, events: [], cursor: 0, isrActive: false },
         dl:   { max: 100, current: 0, load: 30, status: 'idle' },
         mem:  { stack: 1, heap: 0, crashed: false }
@@ -28,10 +28,7 @@ document.addEventListener('DOMContentLoaded', () => {
     
     function updateLogic() {
         // Temp
-        let rawV = (state.temp.val / 100) * 3.3; // Using simple linear for now: 0-100C -> 0-3.3V range roughly
-        // To match image 0.5 offset: 
-        rawV = 0.5 + (state.temp.val / 100.0); // 0C=0.5V, 100C=1.5V
-        
+        let rawV = 0.5 + (state.temp.val / 100.0);
         if (state.temp.noise) rawV += (Math.random() - 0.5) * 0.1;
         rawV = Math.max(0, Math.min(3.3, rawV));
         state.temp.history.push(rawV); state.temp.history.shift();
@@ -70,10 +67,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function resize(c) {
         const r = c.getBoundingClientRect();
-        // Check if size changed to avoid flicker
-        if (c.width !== r.width || c.height !== r.height) {
-            c.width = r.width; c.height = r.height;
-        }
+        if (c.width !== r.width || c.height !== r.height) { c.width = r.width; c.height = r.height; }
     }
 
     function drawScopeGrid(ctx, w, h) {
@@ -91,78 +85,38 @@ document.addEventListener('DOMContentLoaded', () => {
         if (state.screen === 'memory') drawMemory();
     }
 
-    // === Temperature (Updated with Characteristics Graph) ===
     function drawTemp() {
         const v = state.temp.history[state.temp.history.length-1];
         document.getElementById('disp-volt').textContent = v.toFixed(2);
         document.getElementById('disp-adc').textContent = Math.floor((v/3.3)*4095);
         document.getElementById('disp-temp').textContent = ((v - 0.5) * 100).toFixed(1);
         
-        // --- 1. Draw Characteristics Graph (DataSheet Style) ---
         const charCvs = document.getElementById('canvas-temp-char');
         const charCtx = charCvs.getContext('2d');
-        resize(charCvs); 
-        const w = charCvs.width; const h = charCvs.height;
+        resize(charCvs); const w = charCvs.width; const h = charCvs.height;
         charCtx.clearRect(0,0,w,h);
         
-        // Margins for axes
-        const mL = 30, mR = 10, mT = 10, mB = 20;
-        const gW = w - mL - mR; const gH = h - mT - mB;
-        
-        // Axes
+        const mL = 30, mR = 10, mT = 10, mB = 20; const gW = w - mL - mR; const gH = h - mT - mB;
         charCtx.strokeStyle = '#333'; charCtx.lineWidth = 2; charCtx.beginPath();
         charCtx.moveTo(mL, mT); charCtx.lineTo(mL, h - mB); charCtx.lineTo(w - mR, h - mB); charCtx.stroke();
         
-        // Labels
         charCtx.fillStyle = '#333'; charCtx.font = '10px sans-serif'; charCtx.textAlign = 'right';
-        charCtx.fillText('2.0V', mL - 4, mT + 10);
-        charCtx.fillText('0.0V', mL - 4, h - mB);
-        charCtx.textAlign = 'center';
-        charCtx.fillText('-20', mL, h - mB + 14);
-        charCtx.fillText('100°C', w - mR, h - mB + 14);
+        charCtx.fillText('2.0V', mL - 4, mT + 10); charCtx.fillText('0.0V', mL - 4, h - mB);
+        charCtx.textAlign = 'center'; charCtx.fillText('-20', mL, h - mB + 14); charCtx.fillText('100°C', w - mR, h - mB + 14);
 
-        // Map functions
-        const mapX = (t) => mL + ((t + 20) / 120) * gW; // Range -20 to 100
-        const mapY = (v) => (h - mB) - (v / 2.0) * gH;  // Range 0 to 2.0V
-        
-        // Green Characteristic Line (V = 0.5 + T/100)
+        const mapX = (t) => mL + ((t + 20) / 120) * gW; const mapY = (val) => (h - mB) - (val / 2.0) * gH;
         charCtx.strokeStyle = '#2ecc71'; charCtx.lineWidth = 3; charCtx.beginPath();
-        charCtx.moveTo(mapX(-20), mapY(0.5 + -20/100));
-        charCtx.lineTo(mapX(100), mapY(0.5 + 100/100));
-        charCtx.stroke();
+        charCtx.moveTo(mapX(-20), mapY(0.5 + -20/100)); charCtx.lineTo(mapX(100), mapY(0.5 + 100/100)); charCtx.stroke();
         
-        // Dashed tolerance lines
-        charCtx.setLineDash([4, 4]); charCtx.strokeStyle = '#a9dfbf'; charCtx.lineWidth = 1;
-        charCtx.beginPath(); // Upper
-        charCtx.moveTo(mapX(-20), mapY(0.55 + -20/100)); charCtx.lineTo(mapX(100), mapY(0.55 + 100/100));
-        charCtx.stroke();
-        charCtx.beginPath(); // Lower
-        charCtx.moveTo(mapX(-20), mapY(0.45 + -20/100)); charCtx.lineTo(mapX(100), mapY(0.45 + 100/100));
-        charCtx.stroke();
-        charCtx.setLineDash([]);
+        const curT = state.temp.val; const curV = 0.5 + curT/100; const pX = mapX(curT); const pY = mapY(curV);
+        charCtx.fillStyle = '#e74c3c'; charCtx.beginPath(); charCtx.arc(pX, pY, 5, 0, Math.PI*2); charCtx.fill();
 
-        // Current Operating Point (Red Dot)
-        const curT = state.temp.val;
-        const curV = 0.5 + curT/100;
-        const pX = mapX(curT); const pY = mapY(curV);
-
-        // Drop lines
-        charCtx.strokeStyle = '#e74c3c'; charCtx.lineWidth = 1; charCtx.setLineDash([2, 2]);
-        charCtx.beginPath();
-        charCtx.moveTo(pX, pY); charCtx.lineTo(pX, h - mB); // to X axis
-        charCtx.moveTo(pX, pY); charCtx.lineTo(mL, pY);     // to Y axis
-        charCtx.stroke(); charCtx.setLineDash([]);
-
-        // Point
-        charCtx.fillStyle = '#e74c3c'; charCtx.beginPath(); charCtx.arc(pX, pY, 4, 0, Math.PI*2); charCtx.fill();
-
-        // --- 2. Flow Particles ---
         const tRatio = state.temp.val / 100;
         const color = `rgb(${tRatio*255}, ${100}, ${(1-tRatio)*255})`;
         const cvs = document.getElementById('temp-flow-canvas');
         const ctx = cvs.getContext('2d');
         resize(cvs); ctx.clearRect(0,0,cvs.width, cvs.height);
-        if (state.t % 5 === 0) state.temp.particles.push({x: 100, y: cvs.height/2, life: 1.0});
+        if (state.t % 5 === 0) state.temp.particles.push({x: 50, y: cvs.height/2, life: 1.0});
         ctx.fillStyle = color;
         state.temp.particles.forEach((p, i) => {
             p.x += 5; p.life -= 0.005; ctx.globalAlpha = p.life;
@@ -170,7 +124,6 @@ document.addEventListener('DOMContentLoaded', () => {
             if (p.x > cvs.width) state.temp.particles.splice(i, 1);
         });
 
-        // --- 3. Mini Graph ---
         const gCvs = document.getElementById('canvas-volt');
         const gCtx = gCvs.getContext('2d');
         resize(gCvs); gCtx.clearRect(0,0,gCvs.width, gCvs.height);
@@ -189,52 +142,51 @@ document.addEventListener('DOMContentLoaded', () => {
         const lineColor = isRev ? C.accent : C.secondary;
         const glowColor = isRev ? C.accentGlow : C.secondaryGlow;
 
+        const cvs = document.getElementById('ctrl-flow-canvas');
+        const ctx = cvs.getContext('2d');
+        resize(cvs); ctx.clearRect(0,0,cvs.width, cvs.height);
+        
+        if (Math.abs(input) > 5 && state.t % Math.max(1, 10 - Math.floor(duty*8)) === 0) {
+            state.ctrl.particles.push({x: 50, y: cvs.height/2, life: 1.0, color: lineColor});
+        }
+        state.ctrl.particles.forEach((p, i) => {
+            p.x += 5; p.life -= 0.005; ctx.fillStyle = p.color; ctx.globalAlpha = p.life;
+            ctx.beginPath(); ctx.arc(p.x, p.y + (Math.random()-0.5)*10, 3, 0, Math.PI*2); ctx.fill();
+            if (p.x > cvs.width) state.ctrl.particles.splice(i, 1);
+        });
+
         const wrapper = document.getElementById('motor-wrapper');
         document.getElementById('motor-body').style.transform = `rotate(${state.ctrl.angle}deg)`;
         document.getElementById('disp-rpm').textContent = Math.round(Math.abs(state.ctrl.rpm) * 10);
+        document.getElementById('disp-stick').textContent = input;
         
         wrapper.classList.remove('motor-state-fwd', 'motor-state-rev');
         const dirText = document.getElementById('disp-dir-text');
         if (Math.abs(input) > 5) {
             wrapper.classList.add(isRev ? 'motor-state-rev' : 'motor-state-fwd');
-            dirText.textContent = isRev ? "⏪ REVERSE" : "FORWARD ⏩";
+            dirText.textContent = isRev ? "⏪ REV" : "FWD ⏩";
             dirText.style.color = lineColor;
-        } else {
-            dirText.textContent = "STOP"; dirText.style.color = '#aaa';
-        }
+        } else { dirText.textContent = "STOP"; dirText.style.color = '#aaa'; }
 
         const setupScopeCtx = (ctx) => {
-            ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.shadowBlur = 10;
+            ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.shadowBlur = 8;
             ctx.shadowColor = glowColor; ctx.strokeStyle = lineColor; ctx.lineWidth = 2;
         };
-
-        const cvsIn = document.getElementById('canvas-ctrl-in');
-        const ctxIn = cvsIn.getContext('2d');
-        resize(cvsIn); ctxIn.clearRect(0,0,cvsIn.width, cvsIn.height);
-        drawScopeGrid(ctxIn, cvsIn.width, cvsIn.height);
-        const midY = cvsIn.height / 2;
-        ctxIn.beginPath(); ctxIn.strokeStyle = 'rgba(255,255,255,0.2)'; ctxIn.lineWidth = 1; ctxIn.shadowBlur=0;
-        ctxIn.moveTo(0, midY); ctxIn.lineTo(cvsIn.width, midY); ctxIn.stroke();
-
-        ctxIn.beginPath(); setupScopeCtx(ctxIn);
-        state.ctrl.historyIn.forEach((val, i) => {
-            const x = (i / 100) * cvsIn.width; const y = midY - (val / 100) * (midY - 10);
-            if (i === 0) ctxIn.moveTo(x, y); else ctxIn.lineTo(x, y);
-        });
-        ctxIn.stroke();
 
         const cvsPwm = document.getElementById('canvas-ctrl-pwm');
         const ctxPwm = cvsPwm.getContext('2d');
         resize(cvsPwm); ctxPwm.clearRect(0,0,cvsPwm.width, cvsPwm.height);
         drawScopeGrid(ctxPwm, cvsPwm.width, cvsPwm.height);
         ctxPwm.beginPath(); setupScopeCtx(ctxPwm);
-        const cycles = 5; const periodW = cvsPwm.width / cycles;
-        const highW = periodW * duty; const highY = 10; const lowY = cvsPwm.height - 10;
-        for(let i=0; i<cycles; i++) {
-            let startX = i * periodW;
-            if (duty <= 0.02) { ctxPwm.moveTo(startX, lowY); ctxPwm.lineTo(startX + periodW, lowY); }
-            else if (duty >= 0.98) { ctxPwm.moveTo(startX, highY); ctxPwm.lineTo(startX + periodW, highY); }
-            else {
+        const cycles = 4; const periodW = cvsPwm.width / cycles;
+        const highW = periodW * duty; const highY = 8; const lowY = cvsPwm.height - 8;
+        
+        if (duty < 0.02) { ctxPwm.moveTo(0, lowY); ctxPwm.lineTo(cvsPwm.width, lowY); }
+        else if (duty > 0.98) { ctxPwm.moveTo(0, highY); ctxPwm.lineTo(cvsPwm.width, highY); }
+        else {
+            const offset = -(state.t * 2) % periodW;
+            for(let i=-1; i<=cycles; i++) {
+                let startX = i * periodW + offset;
                 ctxPwm.moveTo(startX, lowY); ctxPwm.lineTo(startX, highY);
                 ctxPwm.lineTo(startX + highW, highY); ctxPwm.lineTo(startX + highW, lowY);
                 ctxPwm.lineTo(startX + periodW, lowY);
@@ -246,11 +198,8 @@ document.addEventListener('DOMContentLoaded', () => {
         const ctxDir = cvsDir.getContext('2d');
         resize(cvsDir); ctxDir.clearRect(0,0,cvsDir.width, cvsDir.height);
         drawScopeGrid(ctxDir, cvsDir.width, cvsDir.height);
-        const dLowY = cvsDir.height - 15; const dHighY = 15; const dY = isRev ? dHighY : dLowY;
+        const dLowY = cvsDir.height - 10; const dHighY = 10; const dY = isRev ? dHighY : dLowY;
         ctxDir.beginPath(); setupScopeCtx(ctxDir); ctxDir.moveTo(0, dY); ctxDir.lineTo(cvsDir.width, dY); ctxDir.stroke();
-        ctxDir.shadowBlur = 0; ctxDir.fillStyle = "rgba(255,255,255,0.5)"; ctxDir.font = "10px monospace";
-        ctxDir.fillText("HIGH (REV)", 5, dHighY + 12); ctxDir.fillText("LOW (FWD)", 5, dLowY - 5);
-        ctxDir.fillStyle = lineColor; ctxDir.shadowBlur = 10; ctxDir.beginPath(); ctxDir.arc(cvsDir.width - 10, dY, 4, 0, Math.PI*2); ctxDir.fill();
     }
 
     function drawInterrupt() {
@@ -289,7 +238,7 @@ document.addEventListener('DOMContentLoaded', () => {
         bStack.style.height = `${stackH}px`; bHeap.style.height = `${heapH}px`;
         document.getElementById('val-stack').textContent = Math.round((state.mem.stack/10)*100);
         document.getElementById('val-heap').textContent = state.mem.heap;
-        const totalH = 300 - 40; 
+        const totalH = 340 - 40; 
         if (!state.mem.crashed && (stackH + heapH > totalH)) { state.mem.crashed = true; document.querySelector('.memory-tower').classList.add('crash-shake'); }
     }
 
