@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Embedded Visualizer 2.2 (Datasheet)</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+</head>
+<body>
+
+    <div class="background-orb orb-1"></div>
+    <div class="background-orb orb-2"></div>
+
+    <div class="app-container">
+        <header class="glass-panel header">
+            <div class="logo">
+                <span class="logo-icon">💠</span>
+                <h1>Embedded Viz</h1>
+            </div>
+            <div id="status-display" class="status-pill">System Ready...</div>
+            <nav class="nav-links">
+                <a href="#home" class="nav-item">Home</a>
+            </nav>
+        </header>
+
+        <main id="main-content">
+            <section id="home" class="screen active">
+                <div class="hero-text">
+                    <h2>組み込みの世界を、<br>のぞいてみよう。</h2>
+                    <p>見えない「ソフトウェアの動き」を可視化するインタラクティブ教材</p>
+                </div>
+                <div class="card-grid">
+                    <a href="#temperature" class="card glass-panel hover-lift">
+                        <div class="card-icon">🌡️</div>
+                        <h3>1. Analog to Digital</h3>
+                        <p>温度特性グラフとADC変換の流れ</p>
+                        <div class="tag">Updated</div>
+                    </a>
+                    <a href="#control" class="card glass-panel hover-lift">
+                        <div class="card-icon">🕹️</div>
+                        <h3>2. PWM Control</h3>
+                        <p>波の形と「方向」でモノを動かす</p>
+                        <div class="tag">Updated</div>
+                    </a>
+                    <a href="#interrupt" class="card glass-panel hover-lift">
+                        <div class="card-icon">⚡</div>
+                        <h3>3. Interrupt</h3>
+                        <p>「割り込み」という急な仕事</p>
+                    </a>
+                    <a href="#deadline" class="card glass-panel hover-lift">
+                        <div class="card-icon">⏱️</div>
+                        <h3>4. Real-time</h3>
+                        <p>締切を守れないと何が起きる？</p>
+                    </a>
+                    <a href="#memory" class="card glass-panel hover-lift">
+                        <div class="card-icon">💾</div>
+                        <h3>5. Memory Stack</h3>
+                        <p>見えない壁とのチキンレース</p>
+                    </a>
+                </div>
+            </section>
+
+            <section id="temperature" class="screen">
+                <div class="viz-area glass-panel">
+                    <canvas id="temp-flow-canvas" class="overlay-canvas"></canvas>
+                    
+                    <div class="flow-step sensor-step">
+                        <div class="datasheet-graph-wrapper">
+                            <canvas id="canvas-temp-char" class="datasheet-canvas"></canvas>
+                        </div>
+                        <div class="label">SENSOR CHARACTERISTICS</div>
+                    </div>
+                    
+                    <div class="flow-step voltage-step">
+                        <div class="meter-display">
+                            <span id="disp-volt">0.00</span><small>V</small>
+                        </div>
+                        <canvas id="canvas-volt" class="mini-graph"></canvas>
+                        <div class="label">ANALOG</div>
+                    </div>
+
+                    <div class="flow-step adc-step">
+                        <div class="adc-box">
+                            <div class="binary-matrix" id="adc-binary">0000 0000 0000</div>
+                            <div class="adc-int" id="disp-adc">0</div>
+                        </div>
+                        <div class="label">ADC (Digital)</div>
+                    </div>
+
+                    <div class="flow-step cpu-step">
+                        <div class="cpu-card">
+                            <div class="cpu-val" id="disp-temp">00.0</div>
+                            <small>°C</small>
+                        </div>
+                        <div class="label">CPU CALC</div>
+                    </div>
+                </div>
+
+                <div class="control-area glass-panel">
+                    <div class="slider-group">
+                        <label>周囲温度 (Environment)</label>
+                        <input type="range" id="input-temp" min="0" max="100" value="25" class="modern-range">
+                        <div class="range-labels"><span>❄️ 0°C</span><span>🔥 100°C</span></div>
+                    </div>
+                    <div class="switch-group">
+                        <label class="switch">
+                            <input type="checkbox" id="input-noise">
+                            <span class="slider round"></span>
+                        </label>
+                        <span>電気ノイズ ON</span>
+                    </div>
+                </div>
+                <div class="action-bar" id="action-bar-temp"></div>
+            </section>
+
+            <section id="control" class="screen">
+                <div class="viz-split">
+                    <div class="glass-panel left-panel">
+                        <div class="panel-header">SOFTWARE (Signals)</div>
+                        <div class="signal-row">
+                            <div class="label-sub">INPUT (Stick)</div>
+                            <canvas id="canvas-ctrl-in" class="signal-canvas"></canvas>
+                        </div>
+                        <div class="signal-row">
+                            <div class="label-sub">PWM (Speed)</div>
+                            <canvas id="canvas-ctrl-pwm" class="signal-canvas"></canvas>
+                        </div>
+                        <div class="signal-row">
+                            <div class="label-sub">DIR (Polarity)</div>
+                            <canvas id="canvas-ctrl-dir" class="signal-canvas" style="height: 40px;"></canvas>
+                        </div>
+                    </div>
+
+                    <div class="glass-panel right-panel center-content">
+                        <div class="panel-header">HARDWARE (Reality)</div>
+                        <div class="motor-wrapper" id="motor-wrapper">
+                            <div id="motor-body" class="motor-body">
+                                <div class="motor-shaft"></div>
+                                <div class="motor-arrow"></div>
+                            </div>
+                            <div class="motor-glow" id="motor-glow"></div>
+                        </div>
+                        <div class="rpm-display">
+                            <span id="disp-rpm">0</span> RPM
+                            <div id="disp-dir-text" style="font-size: 0.8rem; color: #aaa; margin-top: 4px;">STOP</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="control-area glass-panel">
+                    <div class="slider-group">
+                        <label>Joystick Input</label>
+                        <input type="range" id="input-stick" min="-100" max="100" value="0" class="modern-range stick-style">
+                        <div class="range-labels">
+                            <span style="color: var(--danger)">◀ Reverse</span>
+                            <span>Stop</span>
+                            <span style="color: var(--secondary)">Forward ▶</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="action-bar" id="action-bar-ctrl"></div>
+            </section>
+
+            <section id="interrupt" class="screen">
+                <div class="viz-area glass-panel no-pad">
+                    <canvas id="canvas-int" class="full-canvas"></canvas>
+                    <div class="overlay-ui">
+                        <div class="mode-badge" id="int-mode-badge">POLLING MODE</div>
+                    </div>
+                </div>
+                <div class="control-area glass-panel row-layout">
+                    <div class="toggle-group">
+                        <button class="mode-btn active" data-mode="polling">Polling (待つ)</button>
+                        <button class="mode-btn" data-mode="interrupt">Interrupt (即反応)</button>
+                    </div>
+                    <div class="trigger-wrapper">
+                        <button id="btn-trigger-event" class="big-trigger-btn">⚡ EVENT発生</button>
+                        <div class="sub-text">割り込み処理の重さ: 
+                            <select id="sel-isr-time" class="modern-select">
+                                <option value="10">軽い (10ms)</option>
+                                <option value="40">重い (40ms)</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                <div class="action-bar" id="action-bar-int"></div>
+            </section>
+
+            <section id="deadline" class="screen">
+                <div class="viz-area glass-panel center-content flex-col">
+                    <div class="deadline-visualizer">
+                        <div class="timeline-track">
+                            <div class="deadline-line">
+                                <span>DEADLINE (100ms)</span>
+                            </div>
+                            <div id="task-bar" class="task-bar">
+                                <span class="task-label">Processing...</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="deadline-msg" class="status-big">Ready</div>
+                </div>
+                <div class="control-area glass-panel">
+                    <label>タスクの重さを選択してください</label>
+                    <div class="preset-buttons">
+                        <button class="preset safe" data-load="30">🟢 余裕 (30ms)</button>
+                        <button class="preset warn" data-load="90">🟡 ギリギリ (90ms)</button>
+                        <button class="preset danger" data-load="120">🔴 超過 (120ms)</button>
+                    </div>
+                </div>
+                <div class="action-bar" id="action-bar-dl"></div>
+            </section>
+
+            <section id="memory" class="screen">
+                <div class="viz-area glass-panel center-content" id="mem-container">
+                    <div class="memory-tower">
+                        <div class="mem-header stack">Stack (Auto)</div>
+                        <div class="mem-body">
+                            <div id="block-stack" class="mem-block stack-block"></div>
+                            <div class="mem-gap">Free Space</div>
+                            <div id="block-heap" class="mem-block heap-block"></div>
+                        </div>
+                        <div class="mem-header heap">Heap (Manual)</div>
+                    </div>
+                    <div class="mem-info">
+                        <div>Stack: <span id="val-stack">0</span>%</div>
+                        <div>Heap: <span id="val-heap">0</span> Bytes</div>
+                    </div>
+                </div>
+                <div class="control-area glass-panel row-layout">
+                    <div class="group">
+                        <label>関数呼び出しの深さ (Stack)</label>
+                        <input type="range" id="input-stack" min="1" max="5" step="1" value="1" class="modern-range">
+                    </div>
+                    <div class="group">
+                        <label>動的確保 (malloc)</label>
+                        <button id="btn-malloc" class="action-btn">+ Block Alloc</button>
+                    </div>
+                </div>
+                <div class="action-bar" id="action-bar-mem"></div>
+            </section>
+
+        </main>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
