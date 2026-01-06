@@ -27,14 +27,15 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     
     function updateLogic() {
-        // Temp
-        // TMP36-like characteristic: 0.5V at 0C, 10mV/C.
-        // V = 0.5 + T * 0.01
-        let rawV = 0.5 + (state.temp.val * 0.01);
+        // Temp Logic (Simplified)
+        // 0C = 0V, 100C = 3.0V
+        // Formula: V = T * 0.03
+        let rawV = state.temp.val * 0.03;
         
         if (state.temp.noise) rawV += (Math.random() - 0.5) * 0.1;
-        // Clamp to 0-3.3V (ADC range)
+        // Clamp to 0-3.3V
         rawV = Math.max(0, Math.min(3.3, rawV));
+        
         state.temp.history.push(rawV); state.temp.history.shift();
 
         // Control
@@ -93,17 +94,15 @@ document.addEventListener('DOMContentLoaded', () => {
         const v = state.temp.history[state.temp.history.length-1];
         document.getElementById('disp-volt').textContent = v.toFixed(2);
         document.getElementById('disp-adc').textContent = Math.floor((v/3.3)*4095);
-        // Reverse calc for display (Sensor spec: T = (V - 0.5) * 100)
-        document.getElementById('disp-temp').textContent = ((v - 0.5) * 100).toFixed(1);
+        // Reverse calc: T = V / 0.03
+        let dispT = v / 0.03;
+        document.getElementById('disp-temp').textContent = dispT.toFixed(1);
         
-        // Update Human Face
         updateHumanFace(state.temp.val);
-
-        // Update Reference Graph
-        drawTempGraph();
+        drawTempGraph(); // Updated for 0-Start
 
         // Particles
-        const tRatio = (state.temp.val + 20) / 120; // range -20 to 100 normalized
+        const tRatio = state.temp.val / 100;
         const color = `rgb(${tRatio*255}, ${50}, ${(1-tRatio)*255})`;
         const cvs = document.getElementById('temp-flow-canvas');
         const ctx = cvs.getContext('2d');
@@ -149,19 +148,43 @@ document.addEventListener('DOMContentLoaded', () => {
         charCtx.clearRect(0,0,w,h);
         
         const mL = 30, mR = 10, mT = 10, mB = 20; const gW = w - mL - mR; const gH = h - mT - mB;
+        
+        // Axes
         charCtx.strokeStyle = '#333'; charCtx.lineWidth = 2; charCtx.beginPath();
         charCtx.moveTo(mL, mT); charCtx.lineTo(mL, h - mB); charCtx.lineTo(w - mR, h - mB); charCtx.stroke();
         
+        // Labels
         charCtx.fillStyle = '#333'; charCtx.font = '10px sans-serif'; charCtx.textAlign = 'right';
-        charCtx.fillText('2.0V', mL - 4, mT + 10); charCtx.fillText('0.0V', mL - 4, h - mB);
-        charCtx.textAlign = 'center'; charCtx.fillText('-20', mL, h - mB + 14); charCtx.fillText('100°C', w - mR, h - mB + 14);
+        charCtx.fillText('3.0V', mL - 4, mT + 10); // Max V
+        charCtx.fillText('0.0V', mL - 4, h - mB);
+        charCtx.textAlign = 'center'; 
+        charCtx.fillText('0°C', mL, h - mB + 14); // Min T
+        charCtx.fillText('100°C', w - mR, h - mB + 14);
 
-        const mapX = (t) => mL + ((t + 20) / 120) * gW; const mapY = (val) => (h - mB) - (val / 2.0) * gH;
+        // Map: 0-100C => 0-3.0V
+        const mapX = (t) => mL + (t / 100) * gW; 
+        const mapY = (val) => (h - mB) - (val / 3.0) * gH; // Scale to 3.0V max for graph
+
+        // Characteristic Line
         charCtx.strokeStyle = '#2ecc71'; charCtx.lineWidth = 3; charCtx.beginPath();
-        charCtx.moveTo(mapX(-20), mapY(0.5 + -20*0.01)); charCtx.lineTo(mapX(100), mapY(0.5 + 100*0.01)); charCtx.stroke();
+        charCtx.moveTo(mapX(0), mapY(0)); 
+        charCtx.lineTo(mapX(100), mapY(3.0)); 
+        charCtx.stroke();
         
-        const curT = state.temp.val; const curV = 0.5 + curT*0.01; const pX = mapX(curT); const pY = mapY(curV);
+        // Current Point
+        const curT = state.temp.val; 
+        const curV = curT * 0.03; 
+        const pX = mapX(curT); 
+        const pY = mapY(curV);
+        
         charCtx.fillStyle = '#e74c3c'; charCtx.beginPath(); charCtx.arc(pX, pY, 5, 0, Math.PI*2); charCtx.fill();
+        
+        // Guidelines
+        charCtx.strokeStyle = '#e74c3c'; charCtx.lineWidth = 1; charCtx.setLineDash([2, 2]);
+        charCtx.beginPath();
+        charCtx.moveTo(pX, pY); charCtx.lineTo(pX, h - mB);
+        charCtx.moveTo(pX, pY); charCtx.lineTo(mL, pY);
+        charCtx.stroke(); charCtx.setLineDash([]);
     }
 
     // === 2. Control (Fan) ===
@@ -172,7 +195,6 @@ document.addEventListener('DOMContentLoaded', () => {
         const lineColor = isRev ? C.accent : C.secondary;
         const glowColor = isRev ? C.accentGlow : C.secondaryGlow;
 
-        // Particles Flow
         const cvs = document.getElementById('ctrl-flow-canvas');
         const ctx = cvs.getContext('2d');
         resize(cvs); ctx.clearRect(0,0,cvs.width, cvs.height);
@@ -186,7 +208,6 @@ document.addEventListener('DOMContentLoaded', () => {
             if (p.x > cvs.width) state.ctrl.particles.splice(i, 1);
         });
 
-        // FAN Rotation & Wind
         const blades = document.getElementById('fan-blades');
         blades.style.transform = `rotate(${state.ctrl.angle}deg)`;
         
@@ -197,17 +218,14 @@ document.addEventListener('DOMContentLoaded', () => {
         if (Math.abs(input) > 5) {
             dirText.textContent = isRev ? "⏪ 吸気 (REV)" : "送風 (FWD) ⏩";
             dirText.style.color = lineColor;
-            // Generate Wind Particles
             createWind(isRev, duty, lineColor);
         } else { dirText.textContent = "STOP"; dirText.style.color = '#aaa'; }
 
-        // Scope Config
         const setupScopeCtx = (ctx) => {
             ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.shadowBlur = 8;
             ctx.shadowColor = glowColor; ctx.strokeStyle = lineColor; ctx.lineWidth = 2;
         };
 
-        // PWM Scope
         const cvsPwm = document.getElementById('canvas-ctrl-pwm');
         const ctxPwm = cvsPwm.getContext('2d');
         resize(cvsPwm); ctxPwm.clearRect(0,0,cvsPwm.width, cvsPwm.height);
@@ -229,7 +247,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         ctxPwm.stroke();
 
-        // DIR Scope
         const cvsDir = document.getElementById('canvas-ctrl-dir');
         const ctxDir = cvsDir.getContext('2d');
         resize(cvsDir); ctxDir.clearRect(0,0,cvsDir.width, cvsDir.height);
@@ -240,9 +257,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function createWind(isRev, intensity, color) {
         const container = document.getElementById('wind-effect');
-        // Limit creation rate
         if (Math.random() > intensity) return;
-
         const el = document.createElement('div');
         el.className = 'wind-line';
         el.style.background = color;
@@ -251,7 +266,6 @@ document.addEventListener('DOMContentLoaded', () => {
         el.style.left = isRev ? '100%' : '0%';
         container.appendChild(el);
 
-        // Animate via WAAPI
         const keyframes = isRev 
             ? [{ transform: 'translateX(0) scaleX(1)', opacity: 0.8 }, { transform: 'translateX(-150px) scaleX(1.5)', opacity: 0 }]
             : [{ transform: 'translateX(0) scaleX(1)', opacity: 0.8 }, { transform: 'translateX(150px) scaleX(1.5)', opacity: 0 }];
@@ -260,7 +274,7 @@ document.addEventListener('DOMContentLoaded', () => {
         anim.onfinish = () => el.remove();
     }
 
-    // === Other Sections (Unchanged Logic) ===
+    // === Other Sections (Unchanged) ===
     function drawInterrupt() {
         const cvs = document.getElementById('canvas-int');
         const ctx = cvs.getContext('2d');

@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Embedded Viz 3.0 (Human & Fan)</title>
+    <title>Embedded Viz 3.1 (Simple Graph)</title>
     <link rel="stylesheet" href="styles.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
@@ -36,7 +36,7 @@
                         <div class="card-icon">🥶🥵</div>
                         <h3>1. Analog to Digital</h3>
                         <p>温度変化とセンサ・ADCの流れ</p>
-                        <div class="tag">Updated</div>
+                        <div class="tag">Simple Graph</div>
                     </a>
                     <a href="#control" class="card glass-panel hover-lift">
                         <div class="card-icon">🌪️</div>
@@ -83,7 +83,7 @@
                     <div class="flow-step sensor-icon-step">
                         <div class="sensor-chip">
                             <div class="chip-body">
-                                <span>TMP<br>36</span>
+                                <span>SIMP<br>LE</span>
                             </div>
                             <div class="chip-legs">
                                 <div></div><div></div><div></div>
@@ -127,8 +127,9 @@
                         </div>
                         <div class="datasheet-desc">
                             <p><strong>特性グラフ (V-T)</strong></p>
-                            <p>温度が上がると電圧が直線的に上がる特性を持っています。</p>
-                            <code>Vout = 0.5V + (Temp / 100)</code>
+                            <p>0°Cで0Vになり、温度に比例して電圧が増えるシンプルなセンサです。</p>
+                            <code>Vout = Temp × 0.03</code>
+                            <p style="font-size: 0.8rem; color:#888; margin-top:4px;">(例: 25°C → 0.75V, 100°C → 3.0V)</p>
                         </div>
                     </div>
                 </div>
@@ -136,8 +137,8 @@
                 <div class="control-area glass-panel">
                     <div class="slider-group">
                         <label>周囲温度 (Environment)</label>
-                        <input type="range" id="input-temp" min="-20" max="100" value="25" class="modern-range temp-range">
-                        <div class="range-labels"><span>❄️ -20°C</span><span>🔥 100°C</span></div>
+                        <input type="range" id="input-temp" min="0" max="100" value="25" class="modern-range temp-range">
+                        <div class="range-labels"><span>❄️ 0°C</span><span>🔥 100°C</span></div>
                     </div>
                     <div class="switch-group">
                         <label class="switch">
